@@ -22,7 +22,7 @@ import IframePropertyDialog from "./components/IframePropertyDialog.vue";
 import VideoPropertyDialog from "./components/VideoPropertyDialog.vue";
 import WebcamPropertyDialog from "./components/WebcamPropertyDialog.vue";
 import TablePropertyDialog from "./components/TablePropertyDialog.vue";
-import SliderPropertyDialog from "./components/SliderPropertyDialog.vue";
+import ThermometerPropertyDialog from "./components/ThermometerPropertyDialog.vue";
 import {
  addResizeHandles,
  removeResizeHandles,
@@ -132,8 +132,8 @@ const currentWebcamComponent = ref(null);
 const tableConfigDialogVisible = ref(false);
 const currentTableComponent = ref(null);
 
-// 滑块配置弹框状态
-const sliderConfigVisible = ref(false);
+// 温度计配置弹框状态
+const thermometerConfigVisible = ref(false);
 
 // 数据集配置状态
 const datasetDialogVisible = ref(false);
@@ -266,7 +266,7 @@ const contextMenuItems = computed(() => {
  const isVideoComponent = hasSelection && selectedCanvasComponent.value?.type === "video";
  const isWebcamComponent = hasSelection && selectedCanvasComponent.value?.type === "webcam";
  const isTableComponent = hasSelection && (selectedCanvasComponent.value?.type === "table" || selectedCanvasComponent.value?.tableConfig);
- const isSliderComponent = hasSelection && selectedCanvasComponent.value?.type === "slider";
+ const isThermometerComponent = hasSelection && selectedCanvasComponent.value?.type === "thermometer";
 
  return [
   {
@@ -312,11 +312,11 @@ const contextMenuItems = computed(() => {
    action: "tableConfig"
   },
   {
-   id: "slider-config",
-   label: "滑块配置",
+   id: "thermometer-config",
+   label: "温度计配置",
    icon: "ep:tools",
-   disabled: !isSliderComponent,
-   action: "sliderConfig"
+   disabled: !isThermometerComponent,
+   action: "thermometerConfig"
   },
   { separator: true },
   {
@@ -1007,7 +1007,7 @@ const getModeDisplayName = (mode: string) => {
   "chart-line": "折线图",
   "chart-bar": "柱状图",
   switch: "开关",
-  slider: "滑块",
+  thermometer: "温度计",
   alarm: "报警灯",
   rectangle: "矩形",
   circle: "圆形",
@@ -1111,8 +1111,8 @@ const handleMenuClick = (item: any) => {
   case "tableConfig":
    showTableConfigDialog(selectedCanvasComponent.value);
    break;
-  case "sliderConfig":
-   sliderConfigVisible.value = true;
+  case "thermometerConfig":
+   thermometerConfigVisible.value = true;
    break;
   case "binding":
    handleDataBinding();
@@ -1288,9 +1288,9 @@ const handleSaveWebcamConfig = (config: any) => utils4.handleSaveWebcamConfig(co
 // 保存表格配置
 const handleSaveTableConfig = (config: any) => utils4.handleSaveTableConfig(config, currentTableComponent.value, createTableElement, setupTableDataRefresh, editorContainer, isSaved, ElMessage);
 
-// 保存滑块配置
-const handleSaveSliderConfig = (config: any) => {
-  if (!selectedCanvasComponent.value || selectedCanvasComponent.value.type !== 'slider') return;
+// 保存温度计配置
+const handleSaveThermometerConfig = (config: any) => {
+  if (!selectedCanvasComponent.value || selectedCanvasComponent.value.type !== 'thermometer') return;
 
   try {
     // 更新组件 properties
@@ -1330,7 +1330,7 @@ const handleSaveSliderConfig = (config: any) => {
       });
     }
 
-    console.log('🎚️ 更新滑块配置:', {
+    console.log('🌡️ 更新温度计配置:', {
       value: selectedCanvasComponent.value.properties.value,
       options: selectedCanvasComponent.value.properties.options,
       size: selectedCanvasComponent.value.size
@@ -1342,7 +1342,7 @@ const handleSaveSliderConfig = (config: any) => {
       element.remove();
     }
 
-    // 重新创建滑块元素
+    // 重新创建温度计元素
     const canvasContent = editorContainer.value?.querySelector(".canvas-content");
     if (canvasContent) {
       const newElement = utils1.createFuxaSliderElement(
@@ -1360,10 +1360,10 @@ const handleSaveSliderConfig = (config: any) => {
     }
 
     isSaved.value = false;
-    ElMessage.success("滑块配置已更新");
+    ElMessage.success("温度计配置已更新");
   } catch (error) {
-    console.error('保存滑块配置失败:', error);
-    ElMessage.error("滑块配置保存失败");
+    console.error('保存温度计配置失败:', error);
+    ElMessage.error("温度计配置保存失败");
   }
 };
 
@@ -2852,12 +2852,12 @@ onUnmounted(() => {
    @open-dataset-panel="datasetDialogVisible = true"
   />
 
-  <!-- 滑块配置对话框 -->
-  <SliderPropertyDialog
-   :visible="sliderConfigVisible"
-   :slider-component="selectedCanvasComponent"
-   @update:visible="sliderConfigVisible = $event"
-   @save-config="handleSaveSliderConfig"
+  <!-- 温度计配置对话框 -->
+  <ThermometerPropertyDialog
+   :visible="thermometerConfigVisible"
+   :thermometer-component="selectedCanvasComponent"
+   @update:visible="thermometerConfigVisible = $event"
+   @save-config="handleSaveThermometerConfig"
   />
  </div>
 </template>

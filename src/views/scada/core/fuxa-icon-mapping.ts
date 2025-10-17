@@ -191,9 +191,9 @@ export const controlComponents: ComponentIconMapping[] = [
     category: "控制"
   },
   {
-    name: "slider",
-    title: "Slider",
-    iconPath: "@/assets/svg/slider.svg",
+    name: "thermometer",
+    title: "温度计",
+    iconPath: "@/assets/svg/thermometer.svg",
     category: "控制"
   },
   {

@@ -116,7 +116,7 @@ export const createFuxaSliderElement = (
 
   const container = document.createElement('div');
   container.id = component.id;
-  container.className = 'fuxa-component slider-component';
+  container.className = 'fuxa-component thermometer-component';
   container.style.cssText = `
     position: absolute;
     left: ${component.position.x}px;

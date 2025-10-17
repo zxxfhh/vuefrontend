@@ -6,17 +6,17 @@
     :close-on-click-modal="false"
     draggable
     align-center
-    class="slider-property-dialog"
+    class="thermometer-property-dialog"
     @close="handleClose"
   >
     <!-- 自定义头部 -->
     <template #header="{ close }">
       <div class="custom-dialog-header">
         <div class="header-left">
-          <div class="header-icon">🎚️</div>
+          <div class="header-icon">🌡️</div>
           <div class="header-content">
-            <h3 class="header-title">滑块属性配置</h3>
-            <p class="header-subtitle">配置滑块的外观、刻度和交互行为</p>
+            <h3 class="header-title">温度计属性配置</h3>
+            <p class="header-subtitle">配置温度计的外观、刻度和液体动画效果</p>
           </div>
         </div>
         <div class="header-right">
@@ -28,7 +28,7 @@
     </template>
 
     <div class="dialog-content">
-      <el-form :model="formData" label-width="100px" class="slider-form">
+      <el-form :model="formData" label-width="100px" class="thermometer-form">
         <!-- 基本配置 -->
         <div class="form-section">
           <div class="section-title">基本配置</div>
@@ -86,7 +86,7 @@
               controls-position="right"
               style="width: 100%"
             />
-            <div class="form-tip">每次滑动变化的最小单位</div>
+            <div class="form-tip">数值变化的最小单位</div>
           </el-form-item>
 
           <el-form-item label="当前值">
@@ -105,12 +105,12 @@
         <div class="form-section">
           <div class="section-title">颜色配置</div>
 
-          <el-form-item label="轨道背景色">
+          <el-form-item label="容器背景色">
             <div class="color-picker-group">
               <el-color-picker v-model="formData.options.shape.baseColor" />
               <el-input
                 v-model="formData.options.shape.baseColor"
-                placeholder="#CDCDCD"
+                placeholder="#FAFAFA"
                 style="flex: 1"
               >
                 <template #prepend>
@@ -120,12 +120,12 @@
             </div>
           </el-form-item>
 
-          <el-form-item label="填充颜色">
+          <el-form-item label="液体颜色">
             <div class="color-picker-group">
               <el-color-picker v-model="formData.options.shape.connectColor" />
               <el-input
                 v-model="formData.options.shape.connectColor"
-                placeholder="#3FB8AF"
+                placeholder="#4CAF50"
                 style="flex: 1"
               >
                 <template #prepend>
@@ -133,14 +133,15 @@
                 </template>
               </el-input>
             </div>
+            <div class="form-tip">支持根据数值自动改变颜色 (低温=绿色, 中温=黄色, 高温=红色)</div>
           </el-form-item>
 
-          <el-form-item label="手柄颜色">
+          <el-form-item label="刻度颜色">
             <div class="color-picker-group">
               <el-color-picker v-model="formData.options.shape.handleColor" />
               <el-input
                 v-model="formData.options.shape.handleColor"
-                placeholder="#CFF"
+                placeholder="#666666"
                 style="flex: 1"
               >
                 <template #prepend>
@@ -312,7 +313,7 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  sliderComponent: {
+  thermometerComponent: {
     type: Object,
     default: null
   }
@@ -386,17 +387,17 @@ const colorPresets = [
 watch(
   () => props.visible,
   (newVal) => {
-    if (newVal && props.sliderComponent?.properties) {
+    if (newVal && props.thermometerComponent?.properties) {
       formData.value = {
-        value: props.sliderComponent.properties.value || 50,
+        value: props.thermometerComponent.properties.value || 50,
         options: {
           ...formData.value.options,
-          ...props.sliderComponent.properties.options
+          ...props.thermometerComponent.properties.options
         }
       };
 
       // 初始化刻度显示状态
-      const pipsValues = props.sliderComponent.properties.options?.pips?.values;
+      const pipsValues = props.thermometerComponent.properties.options?.pips?.values;
       showPips.value = !!(pipsValues && pipsValues.length > 0);
 
       if (showPips.value) {
@@ -497,7 +498,7 @@ const handleSave = () => {
   }
 
   emit("save-config", { ...formData.value });
-  ElMessage.success("滑块配置已保存");
+  ElMessage.success("温度计配置已保存");
   dialogVisible.value = false;
 };
 
@@ -508,7 +509,7 @@ const handleClose = () => {
 </script>
 
 <style scoped lang="scss">
-.slider-property-dialog {
+.thermometer-property-dialog {
   :deep(.el-dialog) {
     border-radius: 12px;
     overflow: hidden;
@@ -579,7 +580,7 @@ const handleClose = () => {
   padding: 20px;
 }
 
-.slider-form {
+.thermometer-form {
   .form-section {
     margin-bottom: 24px;
     padding-bottom: 20px;

@@ -652,17 +652,8 @@ export const createComponentElement = (
     return buttonElement;
   }
 
-  // 特殊处理滑块组件 (FUXA 版本)
-  if (component.type === "slider") {
-    console.log('🎚️ 检测到滑块组件:', component.type, component.name);
-    const sliderElement = createFuxaSliderElement(component, canvasContent, setupComponentInteractions);
-
-    setTimeout(() => {
-      updateFuxaSliderAppearance(component, sliderElement);
-    }, 0);
-
-    return sliderElement;
-  }
+  // 温度计组件使用通用的SVG加载流程，不需要特殊处理
+  // SvgManager 会自动检测 #waterShape 元素并应用液体动画
 
   // 特殊处理 Value 组件 - 文本值显示
   if (component.type === "value") {

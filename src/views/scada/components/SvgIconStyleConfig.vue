@@ -55,19 +55,8 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <!-- 静态值参数A - 在选择液体动画、进度条动画时显示，或者组件支持液位/进度功能时显示 -->
-        <el-row
-          v-if="
-            selectedComponent?.style?.svgAnimation === 'liquidFill' ||
-            selectedComponent?.style?.svgAnimation === 'liquidDrain' ||
-            selectedComponent?.style?.svgAnimation === 'progressSlide' ||
-            selectedComponent?.style?.svgAnimation === 'none' && (
-              selectedComponent?.type?.includes('Tank') ||
-              selectedComponent?.type?.includes('progress')
-            )
-          "
-          :gutter="16"
-        >
+        <!-- 目标值参数 - 适用于所有情况，始终显示 -->
+        <el-row :gutter="16">
           <el-col :span="24">
             <el-form-item label="目标值(0-100)">
               <el-slider
