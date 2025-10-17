@@ -17,8 +17,7 @@ export type AnimationType =
   | 'liquidFill'
   | 'liquidDrain'
   | 'pipeFlow'
-  | 'switchToggle'
-  | 'progressSlide';
+  | 'switchToggle';
 
 // 动画类型选项接口
 export interface AnimationOption {
@@ -42,8 +41,7 @@ export const animationOptions: AnimationOption[] = [
   { label: '液体上涨', value: 'liquidFill', description: '容器液体逐渐上涨' },
   { label: '液体下降', value: 'liquidDrain', description: '容器液体逐渐下降' },
   { label: '管道流动', value: 'pipeFlow', description: '管道中流体流动效果' },
-  { label: '开关切换', value: 'switchToggle', description: '开关状态切换动画' },
-  { label: '进度条滑动', value: 'progressSlide', description: '进度条从0滑动到目标值' }
+  { label: '开关切换', value: 'switchToggle', description: '开关状态切换动画' }
 ];
 
 // 动画类型名称映射
@@ -61,8 +59,7 @@ export const animationTypeNames: Record<AnimationType, string> = {
   'liquidFill': '液体上涨',
   'liquidDrain': '液体下降',
   'pipeFlow': '管道流动',
-  'switchToggle': '开关切换',
-  'progressSlide': '进度条滑动'
+  'switchToggle': '开关切换'
 };
 
 /**

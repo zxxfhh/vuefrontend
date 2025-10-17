@@ -17,7 +17,7 @@ export interface SvgRenderOptions {
   strokeColor?: string;
   strokeWidth?: number;
   className?: string;
-  animation?: "rotate" | "pulse" | "blink" | "bounce" | "shake" | "scale" | "moveX" | "moveY" | "fade" | "pipeFlow" | "progressSlide" | "none";
+  animation?: "rotate" | "pulse" | "blink" | "bounce" | "shake" | "scale" | "moveX" | "moveY" | "fade" | "pipeFlow" | "none";
   animationSpeed?: "slow" | "normal" | "fast";
   animationDuration?: string;
   animationIterationCount?: string;
@@ -504,8 +504,8 @@ export class SvgManager {
     // 🌊 检测是否启用管道流动动画
     const isPipeFlowAnimation = options.animation === 'pipeFlow';
 
-    // 🎯 检测是否是进度条滑动动画
-    const isProgressAnimation = options.animation === 'progressSlide';
+    // 🎯 检测是否是液位/进度条动画（liquidFill 和 liquidDrain）
+    const isLevelAnimation = options.animation === 'liquidFill' || options.animation === 'liquidDrain';
 
     console.log('应用主题样式（元素属性方式）:', {
       fillColor: options.fillColor,
@@ -513,7 +513,7 @@ export class SvgManager {
       strokeWidth: options.strokeWidth,
       forceOverride,
       isPipeFlowAnimation,  // 🌊
-      isProgressAnimation   // 🎯
+      isLevelAnimation      // 🎯
     });
 
     // 获取所有可着色的SVG元素
@@ -522,13 +522,13 @@ export class SvgManager {
     );
 
     colorableElements.forEach((element: Element) => {
-      // 🎯 进度条特殊处理 - 仅修改边框，不修改内部填充
-      if (isProgressAnimation) {
+      // 🎯 液位/进度条特殊处理 - 仅修改边框，不修改内部填充
+      if (isLevelAnimation) {
         const elementId = element.id;
 
         // 只对轨道元素应用描边样式（边框）
         if (elementId === 'A-GXP_TRACK') {
-          console.log('🎯 检测到进度条轨道元素，应用描边样式');
+          console.log('🎯 检测到轨道元素，应用描边样式');
 
           if (options.strokeColor) {
             element.setAttribute('stroke', options.strokeColor);
@@ -847,8 +847,8 @@ export class SvgManager {
       });
     }
 
-    // 🎯 检测是否是进度条动画
-    const isProgressAnimation = options.animation === 'progressSlide';
+    // 🎯 检测是否是液位/进度条动画
+    const isLevelAnimation = options.animation === 'liquidFill' || options.animation === 'liquidDrain';
 
     // 应用其他描边属性（不包括颜色）和滤镜效果
     const shapes = svgElement.querySelectorAll('path, rect, circle, ellipse, polygon, polyline');
@@ -856,8 +856,8 @@ export class SvgManager {
     // 如果找到了shape元素，应用到每个shape
     if (shapes.length > 0) {
       shapes.forEach(shape => {
-        // 🎯 进度条特殊处理 - 只对轨道应用描边属性
-        if (isProgressAnimation) {
+        // 🎯 液位/进度条特殊处理 - 只对轨道应用描边属性
+        if (isLevelAnimation) {
           const elementId = (shape as Element).id;
 
           // 只对轨道元素(A-GXP_TRACK)应用描边属性
@@ -1015,8 +1015,7 @@ export class SvgManager {
     const isLiquidRelatedAnimation =
       animation === 'none' ||
       animation === 'liquidFill' ||
-      animation === 'liquidDrain' ||
-      animation === 'progressSlide';
+      animation === 'liquidDrain';
 
     // 🔍 如果是液体相关的动画，但组件不支持，则跳过
     if (isLiquidRelatedAnimation && !this.supportsLiquidAnimation(svgElement)) {
@@ -1038,12 +1037,6 @@ export class SvgManager {
     // 🎯 特殊处理液体动画 - 动画播放完后停留在目标值位置
     if (animation === 'liquidFill' || animation === 'liquidDrain') {
       this.addLiquidAnimation(svgElement, animation, speed, options);
-      return;
-    }
-
-    // 🎯 特殊处理进度条滑动动画 - 动画播放完后停留在目标值位置
-    if (animation === 'progressSlide') {
-      this.addProgressSlideAnimation(svgElement, speed, options);
       return;
     }
 
@@ -1089,6 +1082,7 @@ export class SvgManager {
 
   /**
    * 添加液体动画效果 - 液位从0%上涨到100%或从100%下降到0%
+   * 🎯 语义包装：调用统一的底层实现
    */
   private addLiquidAnimation(
     svgElement: SVGSVGElement,
@@ -1096,169 +1090,17 @@ export class SvgManager {
     speed: string = "normal",
     options?: SvgRenderOptions
   ): void {
-    console.log('addLiquidAnimation调用:', { animation, speed, options });
+    console.log('🌊 液体动画入口:', { animation, speed, options });
 
-    const svgInstance = (svgElement as any).__svgInstance;
+    // 确定动画方向
+    const direction = animation === 'liquidFill' ? 'up' : 'down';
 
-    if (!svgInstance || !svgInstance.putValue) {
-      console.warn('⚠️ SVG实例未初始化或缺少putValue函数');
-      this.addLiquidAnimationFallback(svgElement, animation, speed, options);
-      return;
-    }
-
-    const putValueFunc = svgInstance.putValue;
-
-    // 解析动画时长
-    const speedMap = {
-      slow: 4000,    // 4秒
-      normal: 2000,  // 2秒
-      fast: 1000     // 1秒
-    };
-
-    let duration = speedMap[speed as keyof typeof speedMap] || 2000;
-
-    // 如果提供了animationDuration，优先使用它
-    if (options?.animationDuration) {
-      const durationStr = options.animationDuration;
-      const match = durationStr.match(/^([\d.]+)(s|ms)?$/);
-      if (match) {
-        const value = parseFloat(match[1]);
-        const unit = match[2] || 's';
-        duration = unit === 'ms' ? value : value * 1000;
-      }
-    }
-
-    // 🔍 调试：检查传递过来的原始值
-    console.log('🔍 调试 animationIterationCount:', {
-      原始值: options?.animationIterationCount,
-      类型: typeof options?.animationIterationCount,
-      是否undefined: options?.animationIterationCount === undefined,
-      完整options: options
-    });
-
-    const iterationCount = options?.animationIterationCount || "infinite";
-    const isInfinite = iterationCount === "infinite";
-
-    // 🎯 获取目标液位值 (静态值参数A)
-    const targetValue = options?.animationStaticValue !== undefined
-      ? Math.max(0, Math.min(100, options.animationStaticValue))
-      : this.getDefaultValueFromSvg(svgElement);
-
-    // 液体上涨：从0到目标值，液体下降：从目标值到0
-    const startValue = animation === 'liquidFill' ? 0 : targetValue;
-    const endValue = animation === 'liquidFill' ? targetValue : 0;
-
-    let currentIteration = 0;
-    let targetIterations = isInfinite ? Infinity : parseInt(iterationCount as string);
-
-    console.log('🎯 动画参数:', {
-      animation,
-      startValue,
-      endValue,
-      targetValue: `${targetValue}%`,
-      duration,
-      iterationCount,
-      iterationCount类型: typeof iterationCount,
-      isInfinite,
-      targetIterations,
-      animationType: animation === 'liquidFill' ? '液体上涨' : '液体下降'
-    });
-
-    // 取消之前的动画（如果存在）
-    const animationId = (svgElement as any)._liquidAnimationLoopId;
-    if (animationId) {
-      cancelAnimationFrame(animationId);
-      console.log('取消之前的动画');
-    }
-
-    const animate = () => {
-      if (currentIteration >= targetIterations) {
-        delete (svgElement as any)._liquidAnimationLoopId;
-        console.log(`✅ 液位动画完成，共循环${currentIteration}次`);
-        return; // 动画完成
-      }
-
-      // ⚠️ 关键修复：每次循环开始前，强制重置液位到起点
-      // 🔑 从SVG元素本身获取实例数据
-      const svgInstance = (svgElement as any).__svgInstance;
-      if (svgInstance && typeof svgInstance.updateWaterLevel === 'function') {
-        svgInstance._pn_value = startValue;
-        svgInstance.updateWaterLevel(startValue);
-      }
-
-      const startTime = Date.now();
-
-      const frame = () => {
-        // 🛑 关键修复：检查动画是否已被取消
-        // 如果_liquidAnimationLoopId不存在，说明动画已被清除，应立即停止
-        if (!(svgElement as any)._liquidAnimationLoopId) {
-          console.log('⚠️ 液体动画已被取消，停止frame回调');
-          return;
-        }
-
-        const elapsed = Date.now() - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-
-        // 使用缓动函数
-        const easedProgress = this.easeInOutCubic(progress);
-        const currentValue = startValue + (endValue - startValue) * easedProgress;
-
-        // 直接修改SVG内部变量并调用updateWaterLevel，绕过putValue的内部动画
-        try {
-          // 🔑 从SVG元素本身获取实例数据
-          const svgInstance = (svgElement as any).__svgInstance;
-
-          // 直接设置变量并调用更新函数
-          if (svgInstance && typeof svgInstance.updateWaterLevel === 'function') {
-            svgInstance._pn_value = currentValue;
-            svgInstance.updateWaterLevel(currentValue);
-          }
-          // 降级：使用putValue
-          else {
-            putValueFunc('_pn_value', currentValue);
-          }
-
-        } catch (error) {
-          console.warn('更新液位失败:', error);
-        }
-
-        if (progress < 1) {
-          const frameId = requestAnimationFrame(frame);
-          (svgElement as any)._liquidAnimationLoopId = frameId;
-        } else {
-          // 一次循环完成
-          currentIteration++;
-
-          if (currentIteration < targetIterations) {
-            // 继续下一次循环，延迟300ms让用户看清终点
-            const timeoutId = setTimeout(() => {
-              // 🛑 关键修复：在setTimeout回调中也检查动画是否已被取消
-              if (!(svgElement as any)._liquidAnimationLoopId && !(svgElement as any)._liquidAnimationTimeoutId) {
-                console.log('⚠️ 液体动画已被取消，停止setTimeout回调');
-                return;
-              }
-              delete (svgElement as any)._liquidAnimationTimeoutId;
-              animate();
-            }, 300);
-            // 保存timeout ID,以便后续可以取消
-            (svgElement as any)._liquidAnimationTimeoutId = timeoutId;
-          } else {
-            // 所有循环完成
-            delete (svgElement as any)._liquidAnimationLoopId;
-            delete (svgElement as any)._liquidAnimationTimeoutId;
-            console.log(`✅ 液位动画完成，共循环${currentIteration}次`);
-          }
-        }
-      };
-
-      const frameId = requestAnimationFrame(frame);
-      (svgElement as any)._liquidAnimationLoopId = frameId;
-    };
-
-    // 开始动画
-    console.log(`开始液体动画: ${animation}, 时长: ${duration}ms, 循环: ${iterationCount}`);
-    animate();
+    // 调用统一的底层实现
+    this.addLevelSlideAnimation(svgElement, direction, speed, options);
   }
+
+  // 🗑️ 原addLiquidAnimation的170+行实现代码已移除
+  // 功能已整合到统一的addLevelSlideAnimation函数中
 
   /**
    * 液体动画降级方案 - 直接操作SVG元素
@@ -1358,43 +1200,29 @@ export class SvgManager {
   }
 
   /**
-   * 缓动函数 - 三次方缓入缓出
-   */
-  private easeInOutCubic(t: number): number {
-    return t < 0.5
-      ? 4 * t * t * t
-      : 1 - Math.pow(-2 * t + 2, 3) / 2;
-  }
-
-  /**
-   * 添加进度条滑动动画效果
-   * 🎯 进度条从0%滑动到目标值(animationStaticValue)
+   * 🎯 统一的液位/进度滑动动画底层实现
    * @param svgElement SVG元素
+   * @param direction 动画方向：'up'(从0到目标值) 或 'down'(从目标值到0)
    * @param speed 动画速度
    * @param options 渲染选项
    */
-  private addProgressSlideAnimation(
+  private addLevelSlideAnimation(
     svgElement: SVGSVGElement,
+    direction: 'up' | 'down',
     speed: string = "normal",
     options?: SvgRenderOptions
   ): void {
-    console.log('🎯 添加进度条滑动动画:', { speed, options });
+    console.log('🎯 统一液位滑动动画:', { direction, speed, options });
 
-    // 查找进度条填充元素 (A-GXP_FILL)
-    const fillElement = svgElement.querySelector('#A-GXP_FILL') as SVGRectElement;
-    const trackElement = svgElement.querySelector('#A-GXP_TRACK') as SVGRectElement;
-    const labelElement = svgElement.querySelector('#A-GXP_LABEL') as SVGTextElement;
+    const svgInstance = (svgElement as any).__svgInstance;
 
-    if (!fillElement || !trackElement) {
-      console.warn('⚠️ 未找到进度条关键元素 (A-GXP_FILL 或 A-GXP_TRACK)');
+    if (!svgInstance || !svgInstance.putValue) {
+      console.warn('⚠️ SVG实例未初始化或缺少putValue函数，使用降级方案');
+      this.addLiquidAnimationFallback(svgElement, direction === 'up' ? 'liquidFill' : 'liquidDrain', speed, options);
       return;
     }
 
-    // 获取轨道的尺寸和位置
-    const trackX = parseFloat(trackElement.getAttribute('x') || '6.3');
-    const trackY = parseFloat(trackElement.getAttribute('y') || '0.6');
-    const trackWidth = parseFloat(trackElement.getAttribute('width') || '8.5');
-    const trackHeight = parseFloat(trackElement.getAttribute('height') || '13.8');
+    const putValueFunc = svgInstance.putValue;
 
     // 解析动画时长
     const speedMap = {
@@ -1419,55 +1247,61 @@ export class SvgManager {
     const iterationCount = options?.animationIterationCount || "infinite";
     const isInfinite = iterationCount === "infinite";
 
-    // 🎯 获取目标进度值 (静态值参数A)
-    const targetProgress = options?.animationStaticValue !== undefined
+    // 🎯 获取目标值
+    const targetValue = options?.animationStaticValue !== undefined
       ? Math.max(0, Math.min(100, options.animationStaticValue))
       : this.getDefaultValueFromSvg(svgElement);
+
+    // 根据方向确定起点和终点
+    const startValue = direction === 'up' ? 0 : targetValue;
+    const endValue = direction === 'up' ? targetValue : 0;
 
     let currentIteration = 0;
     let targetIterations = isInfinite ? Infinity : parseInt(iterationCount as string);
 
-    console.log('🎯 进度条动画参数:', {
-      targetProgress: `${targetProgress}%`,
-      duration,
+    console.log('🎯 统一动画参数:', {
+      direction: direction === 'up' ? '上升↑' : '下降↓',
+      startValue: `${startValue}%`,
+      endValue: `${endValue}%`,
+      targetValue: `${targetValue}%`,
+      duration: `${duration}ms`,
       iterationCount,
       isInfinite,
-      targetIterations,
-      trackHeight
+      targetIterations
     });
 
     // 取消之前的动画（如果存在）
-    const animationId = (svgElement as any)._progressAnimationLoopId;
+    const animationId = (svgElement as any)._liquidAnimationLoopId;
     if (animationId) {
       cancelAnimationFrame(animationId);
-      console.log('取消之前的进度条动画');
+      console.log('🛑 取消之前的液位动画');
+    }
+    const timeoutId = (svgElement as any)._liquidAnimationTimeoutId;
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      console.log('🛑 取消之前的液位动画延迟');
     }
 
     const animate = () => {
       if (currentIteration >= targetIterations) {
-        delete (svgElement as any)._progressAnimationLoopId;
-        console.log(`✅ 进度条动画完成，共循环${currentIteration}次`);
-        return; // 动画完成
+        delete (svgElement as any)._liquidAnimationLoopId;
+        console.log(`✅ 液位动画完成，共循环${currentIteration}次`);
+        return;
       }
 
-      console.log(`🔄 第${currentIteration + 1}次循环: 进度条滑动 (0% → ${targetProgress}%)`);
-
-      // ⚠️ 每次循环开始前，强制重置进度到0%
-      const startHeight = 0;
-      const startY = trackY + trackHeight; // 从底部开始
-      fillElement.setAttribute('height', startHeight.toString());
-      fillElement.setAttribute('y', startY.toString());
-      if (labelElement) {
-        labelElement.textContent = '0%';
+      // 每次循环开始前，重置液位到起点
+      const svgInstance = (svgElement as any).__svgInstance;
+      if (svgInstance && typeof svgInstance.updateWaterLevel === 'function') {
+        svgInstance._pn_value = startValue;
+        svgInstance.updateWaterLevel(startValue);
       }
 
       const startTime = Date.now();
 
       const frame = () => {
-        // 🛑 关键修复：检查动画是否已被取消
-        // 如果_progressAnimationLoopId不存在，说明动画已被清除，应立即停止
-        if (!(svgElement as any)._progressAnimationLoopId) {
-          console.log('⚠️ 进度条动画已被取消，停止frame回调');
+        // 检查动画是否已被取消
+        if (!(svgElement as any)._liquidAnimationLoopId) {
+          console.log('⚠️ 液位动画已被取消，停止frame回调');
           return;
         }
 
@@ -1476,59 +1310,72 @@ export class SvgManager {
 
         // 使用缓动函数
         const easedProgress = this.easeInOutCubic(progress);
-        const currentProgress = targetProgress * easedProgress;
+        const currentValue = startValue + (endValue - startValue) * easedProgress;
 
-        // 计算填充高度和Y坐标
-        // 进度条从底部向上填充
-        const fillHeight = (trackHeight * currentProgress) / 100;
-        const fillY = trackY + trackHeight - fillHeight;
+        // 更新液位
+        try {
+          const svgInstance = (svgElement as any).__svgInstance;
 
-        // 更新填充元素
-        fillElement.setAttribute('height', fillHeight.toFixed(2));
-        fillElement.setAttribute('y', fillY.toFixed(2));
-
-        // 更新文本标签
-        if (labelElement) {
-          labelElement.textContent = `${Math.round(currentProgress)}%`;
+          // 优先使用updateWaterLevel或updateProgressLevel
+          if (svgInstance && typeof svgInstance.updateWaterLevel === 'function') {
+            svgInstance._pn_value = currentValue;
+            svgInstance.updateWaterLevel(currentValue);
+          } else if (svgInstance && typeof svgInstance.updateProgressLevel === 'function') {
+            svgInstance._pn_value = currentValue;
+            svgInstance.updateProgressLevel(currentValue);
+          } else {
+            // 降级：使用putValue
+            putValueFunc('_pn_value', currentValue);
+          }
+        } catch (error) {
+          console.warn('更新液位失败:', error);
         }
 
         if (progress < 1) {
           const frameId = requestAnimationFrame(frame);
-          (svgElement as any)._progressAnimationLoopId = frameId;
+          (svgElement as any)._liquidAnimationLoopId = frameId;
         } else {
           // 一次循环完成
           currentIteration++;
 
           if (currentIteration < targetIterations) {
-            // 继续下一次循环，延迟300ms让用户看清终点
+            // 继续下一次循环，延迟300ms
             const timeoutId = setTimeout(() => {
-              // 🛑 关键修复：在setTimeout回调中也检查动画是否已被取消
-              if (!(svgElement as any)._progressAnimationLoopId && !(svgElement as any)._progressAnimationTimeoutId) {
-                console.log('⚠️ 进度条动画已被取消，停止setTimeout回调');
+              if (!(svgElement as any)._liquidAnimationLoopId && !(svgElement as any)._liquidAnimationTimeoutId) {
+                console.log('⚠️ 液位动画已被取消，停止setTimeout回调');
                 return;
               }
-              delete (svgElement as any)._progressAnimationTimeoutId;
+              delete (svgElement as any)._liquidAnimationTimeoutId;
               animate();
             }, 300);
-            // 保存timeout ID,以便后续可以取消
-            (svgElement as any)._progressAnimationTimeoutId = timeoutId;
+            (svgElement as any)._liquidAnimationTimeoutId = timeoutId;
           } else {
             // 所有循环完成
-            delete (svgElement as any)._progressAnimationLoopId;
-            delete (svgElement as any)._progressAnimationTimeoutId;
-            console.log(`✅ 进度条动画完成，共循环${currentIteration}次`);
+            delete (svgElement as any)._liquidAnimationLoopId;
+            delete (svgElement as any)._liquidAnimationTimeoutId;
+            console.log(`✅ 液位动画完成，共循环${currentIteration}次`);
           }
         }
       };
 
       const frameId = requestAnimationFrame(frame);
-      (svgElement as any)._progressAnimationLoopId = frameId;
+      (svgElement as any)._liquidAnimationLoopId = frameId;
     };
 
     // 开始动画
-    console.log(`开始进度条滑动动画，目标值: ${targetProgress}%, 时长: ${duration}ms, 循环: ${iterationCount}`);
+    console.log(`🚀 开始液位动画: ${direction === 'up' ? '上升' : '下降'}, 时长: ${duration}ms, 循环: ${iterationCount}`);
     animate();
   }
+
+  /**
+   * 缓动函数 - 三次方缓入缓出
+   */
+  private easeInOutCubic(t: number): number {
+    return t < 0.5
+      ? 4 * t * t * t
+      : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+
 
   /**
    * 添加管道流动动画效果
