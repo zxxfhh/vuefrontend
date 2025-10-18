@@ -160,7 +160,14 @@ export const createComponentInstance = (
   // 智能尺寸计算
   const smartSize = calculateSmartSize(component);
 
-  console.log(`创建组件实例: ${component.name} 位置: (${position.x}, ${position.y})`);
+  console.log('========== createComponentInstance 调用 ==========');
+  console.log('组件名称:', component.name);
+  console.log('组件标题:', component.title);
+  console.log('传入的位置参数:', position);
+  console.log('位置 x:', position.x);
+  console.log('位置 y:', position.y);
+  console.log('智能尺寸:', smartSize);
+  console.log('=======================================');
 
   // 🔘 为开关组件初始化默认状态
   const componentInstance: any = {
@@ -467,29 +474,46 @@ export const handleCanvasDrop = (
       const rect = (event.target as HTMLElement).getBoundingClientRect();
       const canvasRect = editorContainer.value?.getBoundingClientRect();
 
+      console.log('========== handleCanvasDrop 位置计算 ==========');
+      console.log('event.clientX:', event.clientX);
+      console.log('event.clientY:', event.clientY);
+      console.log('canvasRect:', canvasRect);
+      console.log('canvasZoom.value:', canvasZoom.value);
+
       if (canvasRect) {
         // 计算相对于画布的坐标
         const x = event.clientX - canvasRect.left;
         const y = event.clientY - canvasRect.top;
 
+        console.log('相对位置 x:', x);
+        console.log('相对位置 y:', y);
+
         // 调整缩放比例（不进行 Math.round，让 snapToGrid 来处理精确对齐）
         let scaledX = x / (canvasZoom.value / 100);
         let scaledY = y / (canvasZoom.value / 100);
+
+        console.log('缩放后 scaledX:', scaledX);
+        console.log('缩放后 scaledY:', scaledY);
 
         // 应用吸附功能（如果启用），否则进行四舍五入
         if (snapToGrid) {
           scaledX = snapToGrid(scaledX);
           scaledY = snapToGrid(scaledY);
+          console.log('吸附后 scaledX:', scaledX);
+          console.log('吸附后 scaledY:', scaledY);
         } else {
           scaledX = Math.round(scaledX);
           scaledY = Math.round(scaledY);
+          console.log('四舍五入后 scaledX:', scaledX);
+          console.log('四舍五入后 scaledY:', scaledY);
         }
 
-        console.log("在画布位置添加组件:", {
+        console.log("✅ 最终计算的画布位置:", {
           x: scaledX,
           y: scaledY,
           component: dragData.component
         });
+        console.log('========================================');
 
         // 特殊处理路径组件 - 不支持拖拽创建，只能通过绘制工具创建
         if (dragData.component.name === 'path') {
@@ -538,6 +562,7 @@ export const addComponentToCanvas = (
   console.log('接收到的组件实例:', componentInstance);
   console.log('组件类型:', componentInstance.type);
   console.log('组件名称:', componentInstance.name);
+  console.log('当前组件总数:', projectData.value?.views?.[0]?.components?.length || 0);
   console.log('=======================================');
 
   // 添加到项目数据
@@ -546,6 +571,9 @@ export const addComponentToCanvas = (
       projectData.value.views[0].components = [];
     }
     projectData.value.views[0].components.push(componentInstance);
+    console.log('✅ 组件已添加到 projectData，新的组件总数:', projectData.value.views[0].components.length);
+  } else {
+    console.error('❌ projectData.value.views[0] 不存在！');
   }
 
   // 创建DOM元素

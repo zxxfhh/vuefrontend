@@ -4,23 +4,7 @@ import { fuxaProjectApi } from "./fuxa";
 // SCADA API 统一导出
 export const scadaApi = {
   project: {
-    // 原有项目相关 API
-    getProject: project.getInfoByPk,
-    exportProject: (id: string) => {
-      // 临时实现，实际需要后端支持
-      console.log("导出项目:", id);
-      return Promise.resolve({ data: {} });
-    },
-    runProject: (id: string) => {
-      // 临时实现，实际需要后端支持
-      console.log("运行项目:", id);
-      return Promise.resolve({ data: {} });
-    },
-    stopProject: (id: string) => {
-      // 临时实现，实际需要后端支持
-      console.log("停止项目:", id);
-      return Promise.resolve({ data: {} });
-    },
+    // 完整导出所有项目API（旧版+新版）
     ...project.default
   },
 

@@ -13,6 +13,7 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { fuxaMqttService } from "./core/fuxaMqttService";
 import type { MqttDeviceData, FuxaProject } from "@/api/scada/fuxa/types";
+import { scadaApi } from "@/api/scada";
 import FuxaComponentPanel from "./components/FuxaComponentPanel.vue";
 import DatasetPanel from "./components/DatasetPanel.vue";
 import PropertyPanel from "./components/PropertyPanel.vue";
@@ -39,6 +40,7 @@ import * as utils2 from "./main/utils2";
 import * as utils3 from "./main/utils3";
 import * as utils4 from "./main/utils4";
 import * as utilsButton from "./main/utils-button";
+import * as utilsProject from "./main/utils-project";
 import {
  Close,
  Delete,
@@ -62,7 +64,18 @@ const route = useRoute();
 const router = useRouter();
 
 const projectId = ref(route.params.id as string);
-const projectData = ref(null);
+const projectData = ref({
+  views: [
+    {
+      id: "view_1",
+      name: "主画面",
+      description: "",
+      components: []
+    }
+  ],
+  devices: [],
+  datasets: []
+});
 const loading = ref(false);
 const editorContainer = ref<HTMLDivElement>();
 
@@ -99,7 +112,13 @@ const selectedCanvasComponent = ref(null);
 // 画布网格和吸附功能
 const showGrid = ref(true); // 显示网格
 const enableSnap = ref(true); // 启用吸附
-const gridSize = 20; // 网格大小（像素）
+const gridSize = ref(20); // 网格大小（像素）
+
+// 画布尺寸和样式
+const canvasWidth = ref(1920);
+const canvasHeight = ref(1080);
+const canvasBackgroundColor = ref("#f5f5f5");
+const canvasBackgroundImage = ref("");
 
 // 右键菜单状态
 const contextMenuVisible = ref(false);
@@ -389,6 +408,120 @@ const extractComponentNameFromPath = (svgPath: string): string => utils1.extract
 
 // 返回项目列表
 const goBack = () => utils1.goBack(isSaved, ElMessageBox, saveProject, router);
+
+// ========== 项目保存/加载功能 ==========
+
+/**
+ * 保存项目到本地文件
+ */
+const saveProject = () => utilsProject.saveProject(
+  loading,
+  projectInfo,
+  projectData,
+  canvasWidth,
+  canvasHeight,
+  gridSize,
+  showGrid,
+  enableSnap,
+  canvasBackgroundColor,
+  canvasBackgroundImage,
+  deviceList,
+  datasetList,
+  isSaved,
+  router
+);
+
+/**
+ * 从本地文件加载项目
+ */
+const loadProject = (projectId: string) => utilsProject.loadProject(
+  projectId,
+  loading,
+  projectInfo,
+  projectData,
+  deviceList,
+  datasetList,
+  canvasWidth,
+  canvasHeight,
+  gridSize,
+  showGrid,
+  enableSnap,
+  canvasBackgroundColor,
+  canvasBackgroundImage,
+  isSaved,
+  redrawCanvas,
+  nextTick
+);
+
+/**
+ * 初始化新项目
+ */
+const initializeNewProject = () => utilsProject.initializeNewProject(
+  projectInfo,
+  projectData,
+  deviceList,
+  datasetList,
+  canvasWidth,
+  canvasHeight,
+  gridSize,
+  showGrid,
+  enableSnap,
+  canvasBackgroundColor,
+  canvasBackgroundImage,
+  isSaved
+);
+
+// ========== 资源文件上传管理 ==========
+
+/**
+ * 处理图片上传并创建组件
+ */
+const handleImageUpload = (event: Event, position?: { x: number; y: number }) =>
+  utilsProject.handleImageUpload(event, projectInfo, loading, addComponentToCanvas, position);
+
+/**
+ * 处理视频上传并创建组件
+ */
+const handleVideoUpload = (event: Event, position?: { x: number; y: number }) =>
+  utilsProject.handleVideoUpload(event, projectInfo, loading, addComponentToCanvas, position);
+
+/**
+ * 处理SVG上传
+ */
+const handleSvgUpload = (event: Event) =>
+  utilsProject.handleSvgUpload(event, projectInfo, loading);
+
+// ========== 项目导入/导出功能 ==========
+
+/**
+ * 导出项目为.fuxa文件
+ */
+const handleExportProject = () => utilsProject.handleExportProject(projectInfo);
+
+/**
+ * 导入.fuxa项目文件
+ */
+const handleImportProject = () => utilsProject.handleImportProject(loading, router);
+
+// ========== 自动保存功能 ==========
+
+// 自动保存配置
+const autoSaveConfig = utilsProject.createAutoSaveConfig();
+
+/**
+ * 启动自动保存
+ */
+const startAutoSave = () => utilsProject.startAutoSave(autoSaveConfig, isSaved, projectInfo, saveProject);
+
+/**
+ * 停止自动保存
+ */
+const stopAutoSave = () => utilsProject.stopAutoSave(autoSaveConfig);
+
+/**
+ * 监听离开页面前提示
+ */
+const handleBeforeUnload = utilsProject.handleBeforeUnload(isSaved);
 
 // 编辑器模式状态
 const currentEditorMode = ref("select");
@@ -1828,7 +1961,7 @@ const toggleSnap = () => {
 // 吸附到网格
 const snapToGrid = (value: number) => {
  if (!enableSnap.value) return value;
- return Math.round(value / gridSize) * gridSize;
+ return Math.round(value / gridSize.value) * gridSize.value;
 };
 
 // 根据ID查找组件
@@ -2549,6 +2682,20 @@ onMounted(async () => {
  //   console.warn('SVG清理过程中出现警告:', error);
  //  }
  // }, 3000);
+
+ // 加载项目数据
+ if (projectId.value && projectId.value !== "new") {
+  await loadProject(projectId.value);
+ } else {
+  // 新建项目，初始化空数据
+  initializeNewProject();
+ }
+
+ // 启动自动保存
+ startAutoSave();
+
+ // 添加页面离开前提示
+ window.addEventListener("beforeunload", handleBeforeUnload);
 });
 
 onUnmounted(() => {
@@ -2574,6 +2721,12 @@ onUnmounted(() => {
 
  // 移除全局点击事件监听
  document.removeEventListener("click", hideContextMenu);
+
+ // 停止自动保存
+ stopAutoSave();
+
+ // 移除页面离开前提示
+ window.removeEventListener("beforeunload", handleBeforeUnload);
 });
 </script>
 

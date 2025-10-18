@@ -1926,22 +1926,81 @@ export const handleCanvasClick = (
   hideContextMenu();
 
   if (currentEditorMode.value !== "select" && activeComponent.value) {
+    // 防御性检查：确保 event.currentTarget 存在
+    if (!event.currentTarget) {
+      console.error('❌ event.currentTarget 为 null，无法计算位置');
+      return;
+    }
+
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+
+    console.log('========== handleCanvasClick 位置计算 ==========');
+    console.log('event.currentTarget:', event.currentTarget);
+    console.log('rect:', rect);
+    console.log('event.clientX:', event.clientX);
+    console.log('event.clientY:', event.clientY);
+    console.log('rect.left:', rect.left);
+    console.log('rect.top:', rect.top);
+
+    // 防御性检查：确保所有值都是有效数字
+    const clientX = typeof event.clientX === 'number' && !isNaN(event.clientX) ? event.clientX : 0;
+    const clientY = typeof event.clientY === 'number' && !isNaN(event.clientY) ? event.clientY : 0;
+    const rectLeft = typeof rect.left === 'number' && !isNaN(rect.left) ? rect.left : 0;
+    const rectTop = typeof rect.top === 'number' && !isNaN(rect.top) ? rect.top : 0;
+    const zoom = typeof canvasZoom.value === 'number' && !isNaN(canvasZoom.value) && canvasZoom.value > 0 ? canvasZoom.value : 100;
+
+    console.log('验证后的值:', {
+      clientX,
+      clientY,
+      rectLeft,
+      rectTop,
+      zoom
+    });
+
+    const x = clientX - rectLeft;
+    const y = clientY - rectTop;
+
+    console.log('计算后的 x:', x);
+    console.log('计算后的 y:', y);
+    console.log('canvasZoom.value:', zoom);
 
     // 调整缩放比例（不进行 Math.round，让 snapToGrid 来处理精确对齐）
-    let scaledX = x / (canvasZoom.value / 100);
-    let scaledY = y / (canvasZoom.value / 100);
+    let scaledX = x / (zoom / 100);
+    let scaledY = y / (zoom / 100);
+
+    console.log('缩放后 scaledX:', scaledX);
+    console.log('缩放后 scaledY:', scaledY);
+
+    // 最终防御性检查：确保缩放后的值是有效数字
+    if (isNaN(scaledX) || isNaN(scaledY)) {
+      console.error('❌ 缩放后的位置计算出现 NaN:', {
+        scaledX,
+        scaledY,
+        x,
+        y,
+        zoom
+      });
+      // 使用默认位置
+      scaledX = 100;
+      scaledY = 100;
+      console.log('使用默认位置:', { scaledX, scaledY });
+    }
 
     // 应用吸附功能（如果启用），否则进行四舍五入
     if (snapToGrid) {
       scaledX = snapToGrid(scaledX);
       scaledY = snapToGrid(scaledY);
+      console.log('吸附后 scaledX:', scaledX);
+      console.log('吸附后 scaledY:', scaledY);
     } else {
       scaledX = Math.round(scaledX);
       scaledY = Math.round(scaledY);
+      console.log('四舍五入后 scaledX:', scaledX);
+      console.log('四舍五入后 scaledY:', scaledY);
     }
+
+    console.log('✅ 最终位置:', { x: scaledX, y: scaledY });
+    console.log('========================================');
 
     // 特殊处理直线工具的两点式绘制
     if (activeComponent.value.name === "line") {

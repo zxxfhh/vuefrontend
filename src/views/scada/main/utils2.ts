@@ -94,12 +94,14 @@ export const addComponentToCanvas = (
   projectData: any,
   editorContainer: any,
   isSaved: any,
-  createComponentElement: (componentInstance: any) => void
+  createComponentElement: (componentInstance: any) => void,
+  cleanupAbnormalSvgElementsFn?: any
 ) => {
   console.log('========== addComponentToCanvas 调用 ==========');
   console.log('接收到的组件实例:', componentInstance);
   console.log('组件类型:', componentInstance.type);
   console.log('组件名称:', componentInstance.name);
+  console.log('当前组件总数:', projectData.value?.views?.[0]?.components?.length || 0);
   console.log('=======================================');
 
   // 添加到项目数据
@@ -108,6 +110,9 @@ export const addComponentToCanvas = (
       projectData.value.views[0].components = [];
     }
     projectData.value.views[0].components.push(componentInstance);
+    console.log('✅ 组件已添加到 projectData，新的组件总数:', projectData.value.views[0].components.length);
+  } else {
+    console.error('❌ projectData.value.views[0] 不存在！');
   }
 
   // 创建DOM元素
@@ -123,13 +128,15 @@ export const addComponentToCanvas = (
   ElMessage.success(`已添加组件: ${componentInstance.name}`);
 
   // 延迟清理异常的SVG元素，防止DOMParser创建的临时元素影响页面
-  setTimeout(() => {
-    try {
-      cleanupAbnormalSvgElements();
-    } catch (error) {
-      console.warn('清理异常SVG元素时出现警告:', error);
-    }
-  }, 100);
+  if (cleanupAbnormalSvgElementsFn) {
+    setTimeout(() => {
+      try {
+        cleanupAbnormalSvgElementsFn();
+      } catch (error) {
+        console.warn('清理异常SVG元素时出现警告:', error);
+      }
+    }, 100);
+  }
 };
 
 // 已移动到utils1.ts中，删除重复方法

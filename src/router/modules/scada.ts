@@ -26,7 +26,26 @@ export default {
       component: () => import("@/views/scada/index.vue"),
       meta: {
         title: "组态编辑器",
-        showLink: true,
+        showLink: true
+      }
+    },
+    {
+      path: "/scada/editor/:id",
+      name: "ScadaEditor",
+      component: () => import("@/views/scada/index.vue"),
+      meta: {
+        title: "组态编辑器",
+        showLink: false
+      }
+    },
+    {
+      path: "/scada/runtime/:id",
+      name: "ScadaRuntime",
+      component: () => import("@/views/scada/runtime.vue"),
+      meta: {
+        title: "运行时模式",
+        showLink: false,
+        showParent: false
       }
     }
   ]
