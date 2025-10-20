@@ -17,7 +17,7 @@
 		c27.746-10.873,62.216-10.874,89.96,0l3.114,1.222v77.272l-3.115,1.22C81.35,95.324,65.796,98.147,50,98.147z"></path>
 </g>
 <g id="hlight">
-	<path fill="#006837" d="M50,97.194c-15.678,0-31.111-2.8-44.632-8.098l-2.51-0.983V12.141l2.509-0.984
+	<path fill="#FFFFFF" d="M50,97.194c-15.678,0-31.111-2.8-44.632-8.098l-2.51-0.983V12.141l2.509-0.984
 		c27.531-10.789,61.735-10.789,89.265,0l2.509,0.984v75.972l-2.51,0.983C81.111,94.394,65.678,97.194,50,97.194z"></path>
 </g>
 </g>
@@ -97,7 +97,7 @@
     let _pb_boolState        = false;
 	  let _pn_setInterval      = 500;
     let _pc_state0Colour     = '#b4b4b4';
-    let _pc_state1Colour     = '#006837';
+    let _pc_state1Colour     = '#00ff00';
     let _pc_state2Colour     = '#ff9500';
     let _pc_state3Colour     = '#ff0000';
     let _pc_state4Colour     = '#3c3c3c';
@@ -107,7 +107,7 @@
     let _pn_darkShade        = 15;
     let _pn_shadowShade      = -15;
     //!export-end
-	  let stateNumber = 1;
+	  let stateNumber = 0;
     let blinkInterval;
 
     // Function to update the color based on the set state

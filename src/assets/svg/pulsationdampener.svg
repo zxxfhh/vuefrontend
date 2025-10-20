@@ -107,7 +107,7 @@
     let _pb_boolState        = false;
 	  let _pn_setInterval      = 500;
     let _pc_state0Colour     = '#b4b4b4';
-    let _pc_state1Colour     = '#006837';
+    let _pc_state1Colour     = '#00ff00';
     let _pc_state2Colour     = '#ff9500';
     let _pc_state3Colour     = '#ff0000';
     let _pc_state4Colour     = '#3c3c3c';
@@ -117,7 +117,7 @@
     let _pn_darkShade        = 15;
     let _pn_shadowShade      = -15;
     //!export-end
-	  let stateNumber = 1;
+	  let stateNumber = 0;
     let blinkInterval;
 
     // Function to update the color based on the set state

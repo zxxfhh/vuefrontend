@@ -3,6 +3,12 @@
   display: flex;
   flex-direction: column;
   background: #f5f7fa;
+  position: relative; // 为 loading 遮挡层提供定位上下文
+
+  // 确保 loading 遮挡层在最上层
+  :deep(.el-loading-mask) {
+    z-index: 9999 !important;
+  }
 }
 
 .editor-toolbar {

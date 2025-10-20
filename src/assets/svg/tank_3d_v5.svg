@@ -21,8 +21,8 @@
 	<rect x="46.464" y="81.833" fill="#96D48D" width="7.071" height="18.25"></rect>
 </g>
 <g id="hlight">
-		<rect x="47.525" y="81.833" fill="#006837" width="4.95" height="18.25"></rect>
-		<path fill="#006837" d="M71.975,25c0-12.398-10.32-22.431-22.822-21.959C37.261,3.49,28.025,13.639,28.025,25.54l0,40.326
+		<rect x="47.525" y="81.833" fill="#FFFFFF" width="4.95" height="18.25"></rect>
+		<path fill="#FFFFFF" d="M71.975,25c0-12.398-10.32-22.431-22.822-21.959C37.261,3.49,28.025,13.639,28.025,25.54l0,40.326
 			c0,1.326,0.527,2.598,1.464,3.536L50,89.911l20.51-20.51c0.938-0.938,1.464-2.209,1.464-3.536V25z"></path>
 </g>
 </g>
@@ -102,7 +102,7 @@
     let _pb_boolState        = false;
 	  let _pn_setInterval      = 500;
     let _pc_state0Colour     = '#b4b4b4';
-    let _pc_state1Colour     = '#006837';
+    let _pc_state1Colour     = '#00ff00';
     let _pc_state2Colour     = '#ff9500';
     let _pc_state3Colour     = '#ff0000';
     let _pc_state4Colour     = '#3c3c3c';
@@ -112,7 +112,7 @@
     let _pn_darkShade        = 15;
     let _pn_shadowShade      = -15;
     //!export-end
-	  let stateNumber = 1;
+	  let stateNumber = 0;
     let blinkInterval;
 
     // Function to update the color based on the set state
