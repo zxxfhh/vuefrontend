@@ -185,12 +185,6 @@ export const controlComponents: ComponentIconMapping[] = [
     category: "控制"
   },
   {
-    name: "bag",
-    title: "圆形测量仪",
-    iconPath: "@/assets/svg/bag.svg",
-    category: "控制"
-  },
-  {
     name: "thermometer",
     title: "温度计",
     iconPath: "@/assets/svg/thermometer.svg",

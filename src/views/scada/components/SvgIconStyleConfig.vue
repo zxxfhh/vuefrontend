@@ -461,6 +461,7 @@
 import { watch, nextTick, computed } from "vue";
 import { animationOptions, getAnimationTypeName } from "../core/AnimationTypes";
 import { svgManager } from "../core/SvgManager";
+import { SvgTypeDetector } from "../core/SvgTypeDetector";
 
 interface Props {
   selectedComponent?: any;
@@ -701,6 +702,23 @@ const applySvgStyleToDom = (property: string, value: any) => {
 
   const svgElement = element.querySelector("svg");
   if (!svgElement) return;
+
+  // 🎨 检测是否为 interactive 类型的 SVG (包含 JavaScript 脚本控制颜色)
+  // 这类 SVG 需要自己控制颜色,不应该被外部样式覆盖
+  const svgContent = svgElement.outerHTML;
+  const svgTypeInfo = SvgTypeDetector.detectSvgType(svgContent);
+
+  if (svgTypeInfo.type === 'interactive') {
+    console.log('🎨 检测到 interactive 类型 SVG，跳过 fillType/fill 样式应用，让脚本控制颜色');
+    // 对于 interactive SVG，完全跳过颜色相关的样式应用
+    // 只允许非颜色相关的属性(如描边宽度、透明度等)
+    if (property === 'fillType' || property === 'fill' || property === 'svgColor' ||
+        property === 'fillGradientStart' || property === 'fillGradientEnd' ||
+        property === 'fillGradientAngle' || property === 'fillGradientShape') {
+      console.log(`⏭️ 跳过 interactive SVG 的颜色属性应用: ${property}`);
+      return; // 完全跳过颜色相关的样式应用
+    }
+  }
 
   // 🎨 检测组件类型，针对特殊组件只更新液体/进度条部分
   const componentType = props.selectedComponent?.type;

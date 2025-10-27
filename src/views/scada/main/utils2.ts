@@ -8,6 +8,7 @@ import {
   removeResizeHandles,
   fuxaResizeHandles
 } from "../core/FuxaResizeHandles";
+import { SvgTypeDetector } from "../core/SvgTypeDetector";
 import * as echarts from "echarts";
 
 // 处理画布拖放
@@ -355,6 +356,20 @@ export const applySvgContainerBackground = (element: HTMLElement, backgroundType
     svgCount: svgElements.length
   });
 
+  // 🎨 检测是否为 interactive 类型的 SVG (包含 JavaScript 脚本控制颜色)
+  // 这类 SVG 的背景容器仍然允许用户设置背景色,只是 SVG 内部元素的颜色由脚本控制
+  // 因此这里不做特殊处理,让背景正常应用
+  if (svgElements.length > 0) {
+    const firstSvg = svgElements[0] as SVGSVGElement;
+    const svgContent = firstSvg.outerHTML;
+    const svgTypeInfo = SvgTypeDetector.detectSvgType(svgContent);
+
+    if (svgTypeInfo.type === 'interactive') {
+      console.log('🎨 检测到 interactive 类型 SVG，背景容器允许用户设置，但 SVG 内部颜色由脚本控制');
+      // 不再强制透明,继续执行后续的背景应用逻辑
+    }
+  }
+
   // 根据背景类型决定要应用到SVG容器的样式
   let containerStyle: any = {};
 
@@ -391,9 +406,17 @@ export const applySvgContainerBackground = (element: HTMLElement, backgroundType
       }
     }
 
-    if (backgroundType === 'solid' && (!bgColor || bgColor === 'transparent')) {
-      bgColor = 'rgba(255, 255, 255, 1)';
-    } else if (!bgColor) {
+    // ⚠️ 重要: 如果用户明确设置 backgroundColor 为 'transparent'，应该尊重用户选择
+    // 只有在完全没有设置颜色的情况下，才给一个默认的白色背景
+    if (!bgColor) {
+      // 没有设置任何颜色
+      if (backgroundType === 'solid') {
+        bgColor = 'rgba(255, 255, 255, 1)'; // 默认白色
+      } else {
+        bgColor = 'transparent'; // 其他情况透明
+      }
+    } else if (bgColor === 'transparent') {
+      // 用户明确设置为透明，保持透明
       bgColor = 'transparent';
     }
 
