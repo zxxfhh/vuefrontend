@@ -4,7 +4,52 @@
 import { ref, reactive, Ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import type { Router } from "vue-router";
-import { scadaApi } from "@/api/scada";
+import html2canvas from "html2canvas";
+import scadaApi from "@/api/scada/project/index.ts";
+
+/**
+ * 生成画布截图(Base64格式)
+ * @param canvasElement 画布DOM元素
+ * @param maxWidth 最大宽度(默认400)
+ * @param maxHeight 最大高度(默认300)
+ * @returns Base64字符串(不包含data:image前缀)
+ */
+export const captureCanvasScreenshot = async (
+  canvasElement: HTMLElement,
+  maxWidth: number = 400,
+  maxHeight: number = 300
+): Promise<{ base64: string; imageType: string }> => {
+  try {
+    const canvas = await html2canvas(canvasElement, {
+      backgroundColor: null,
+      scale: 0.5,
+      logging: false,
+      useCORS: true
+    });
+
+    let width = canvas.width;
+    let height = canvas.height;
+    const ratio = Math.min(maxWidth / width, maxHeight / height, 1);
+    width = Math.floor(width * ratio);
+    height = Math.floor(height * ratio);
+
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = width;
+    tempCanvas.height = height;
+    const ctx = tempCanvas.getContext("2d");
+    if (ctx) {
+      ctx.drawImage(canvas, 0, 0, width, height);
+    }
+
+    const base64Data = tempCanvas.toDataURL("image/jpeg", 0.8);
+    const base64 = base64Data.replace(/^data:image\/jpeg;base64,/, "");
+
+    return { base64, imageType: "jpg" };
+  } catch (error) {
+    console.error("画布截图失败:", error);
+    throw new Error("生成缩略图失败");
+  }
+};
 
 /**
  * 保存项目到本地文件
@@ -28,7 +73,31 @@ export const saveProject = async (
   try {
     loading.value = true;
 
-    // 1. 构建完整的项目JSON数据
+    // 1. 检查项目ID
+    if (!projectInfo.value.SnowId) {
+      ElMessage.error("请先创建项目");
+      return;
+    }
+
+    // 2. 获取画布元素并生成截图
+    const canvasElement = document.querySelector(".canvas-content") as HTMLElement;
+    let thumbnailUrl = "";
+    
+    if (canvasElement) {
+      try {
+        const { base64, imageType } = await captureCanvasScreenshot(canvasElement);
+        
+        // 3. 上传缩略图
+        const uploadRes = await scadaApi.uploadBase64Image(base64, imageType);
+        if (uploadRes.success && uploadRes.data) {
+          thumbnailUrl = uploadRes.data.Result || "";
+        }
+      } catch (error) {
+        console.warn("生成缩略图失败,继续保存:", error);
+      }
+    }
+
+    // 4. 构建完整的项目JSON数据
     const projectJson = {
       version: projectInfo.value.Version || "1.0.0",
       info: {
@@ -36,9 +105,7 @@ export const saveProject = async (
         name: projectInfo.value.Name,
         description: projectInfo.value.Description || "",
         created: projectInfo.value.CreateTime || new Date().toISOString(),
-        modified: new Date().toISOString(),
-        author: "current_user", // TODO: 从用户信息获取
-        tags: []
+        modified: new Date().toISOString()
       },
       settings: {
         canvasWidth: canvasWidth.value,
@@ -49,47 +116,21 @@ export const saveProject = async (
         backgroundColor: canvasBackgroundColor.value,
         backgroundImage: canvasBackgroundImage.value
       },
-      views: projectData.value?.views || [{ id: "view_1", name: "主画面", components: [] }],
+      views: projectData.value?.views || [],
       devices: deviceList.value || [],
-      datasets: datasetList.value || [],
-      resources: {
-        images: [],
-        videos: [],
-        svgs: []
-      }
+      datasets: datasetList.value || []
     };
 
-    // 2. 统计组件数量
-    const componentCount = projectJson.views[0]?.components?.length || 0;
-
-    // 3. 调用API保存
-    const response = await scadaApi.project.saveProjectToFile({
-      id: projectInfo.value.SnowId ? Number(projectInfo.value.SnowId) : undefined,
-      name: projectInfo.value.Name || "未命名项目",
-      description: projectInfo.value.Description,
-      projectData: JSON.stringify(projectJson, null, 2), // 格式化JSON
-      version: projectInfo.value.Version,
-      status: projectInfo.value.Status,
-      componentCount
+    // 5. 调用SaveProjectData接口保存
+    const response = await scadaApi.saveProjectData({
+      ProjectId: Number(projectInfo.value.SnowId),
+      ContentData: JSON.stringify(projectJson, null, 2),
+      Thumbnail: thumbnailUrl
     });
 
     if (response.success) {
-      // 4. 更新项目信息
-      if (!projectInfo.value.SnowId) {
-        projectInfo.value.SnowId = response.data.id;
-        projectInfo.value.FilePath = response.data.filePath;
-
-        // 更新路由（新建项目）
-        router.replace({
-          name: "ScadaEditor",
-          params: { id: response.data.id }
-        });
-      }
-
       isSaved.value = true;
-      ElMessage.success(
-        `项目已保存 (文件大小: ${(response.data.fileSize / 1024).toFixed(2)} KB)`
-      );
+      ElMessage.success("项目保存成功");
     } else {
       ElMessage.error(response.message || "保存失败");
     }
@@ -100,9 +141,8 @@ export const saveProject = async (
     loading.value = false;
   }
 };
-
 /**
- * 从本地文件加载项目
+ * 从数据库加载项目（使用getDataInfo接口）
  */
 export const loadProject = async (
   projectId: string,
@@ -125,40 +165,48 @@ export const loadProject = async (
   try {
     loading.value = true;
 
-    // 1. 获取项目元数据
-    const metaResponse = await scadaApi.project.getProjectMeta(projectId);
+    // 1. 调用getDataInfo获取项目完整数据
+    const response = await scadaApi.getDataInfo(Number(projectId));
 
-    if (!metaResponse.success || !metaResponse.data) {
-      ElMessage.error("项目不存在");
+    if (!response.success || !response.data) {
+      ElMessage.error("项目不存在或加载失败");
       return;
     }
 
-    const meta = metaResponse.data;
+    const data = response.data;
 
-    // 2. 从本地文件加载项目数据
-    const fileResponse = await scadaApi.project.loadProjectFromFile(meta.FilePath);
-
-    if (!fileResponse.success || !fileResponse.data) {
-      ElMessage.error("加载项目文件失败");
-      return;
+    // 2. 解析ContentData (JSON字符串)
+    let projectJson: any = {};
+    if (data.ContentData) {
+      try {
+        projectJson = JSON.parse(data.ContentData);
+      } catch (error) {
+        console.error("解析项目数据失败:", error);
+        ElMessage.warning("项目数据格式异常，使用默认配置");
+        projectJson = {
+          version: "1.0.0",
+          info: {},
+          settings: {},
+          views: [{ id: "view_1", name: "主画面", components: [] }],
+          devices: [],
+          datasets: []
+        };
+      }
     }
 
-    // 3. 解析JSON数据
-    const projectJson = JSON.parse(fileResponse.data.content);
-
-    // 4. 恢复项目信息
+    // 3. 恢复项目信息
     projectInfo.value = {
-      SnowId: meta.Id,
-      Name: projectJson.info.name,
-      Description: projectJson.info.description,
-      Version: projectJson.version,
-      Status: meta.Status,
-      FilePath: meta.FilePath,
-      CreateTime: meta.CreateTime,
-      UpdateTime: meta.UpdateTime
+      SnowId: data.SnowId,
+      Name: data.ProjectName || projectJson.info?.name || "未命名项目",
+      Description: data.Description || projectJson.info?.description || "",
+      Version: projectJson.version || "1.0.0",
+      Status: data.ProjectStatus || 0,
+      Thumbnail: data.Thumbnail || "",
+      CreateTime: data.CreateTime,
+      UpdateTime: data.UpdateTime
     };
 
-    // 5. 恢复项目数据
+    // 4. 恢复项目数据
     projectData.value = {
       views: projectJson.views || [{ id: "view_1", name: "主画面", components: [] }],
       devices: projectJson.devices || [],
@@ -168,7 +216,7 @@ export const loadProject = async (
     deviceList.value = projectJson.devices || [];
     datasetList.value = projectJson.datasets || [];
 
-    // 6. 恢复画布设置
+    // 5. 恢复画布设置
     if (projectJson.settings) {
       canvasWidth.value = projectJson.settings.canvasWidth || 1920;
       canvasHeight.value = projectJson.settings.canvasHeight || 1080;
@@ -177,31 +225,41 @@ export const loadProject = async (
       enableSnap.value = projectJson.settings.enableSnap !== false;
       canvasBackgroundColor.value = projectJson.settings.backgroundColor || "#f5f5f5";
       canvasBackgroundImage.value = projectJson.settings.backgroundImage || "";
+    } else {
+      // 默认设置
+      canvasWidth.value = 1920;
+      canvasHeight.value = 1080;
+      gridSize.value = 20;
+      showGrid.value = true;
+      enableSnap.value = true;
+      canvasBackgroundColor.value = "#f5f5f5";
+      canvasBackgroundImage.value = "";
     }
 
-    // 7. 渲染画布
+    // 6. 渲染画布
     await nextTick();
     redrawCanvas();
 
-    // 8. 更新最后打开时间
-    await scadaApi.project.updateLastOpenTime(projectId);
-
     isSaved.value = true;
-    ElMessage.success(
-      `项目加载成功 (组件数: ${projectData.value.views[0]?.components?.length || 0}, ` +
-      `大小: ${(fileResponse.data.size / 1024).toFixed(2)} KB)`
-    );
+    
+    const componentCount = projectData.value.views[0]?.components?.length || 0;
+    ElMessage.success(`项目加载成功 (组件数: ${componentCount})`);
   } catch (error) {
     console.error("加载项目失败:", error);
     ElMessage.error("加载失败: " + (error as Error).message);
+    
+    // 失败时初始化默认项目，保证页面正常显示
+    projectData.value = {
+      views: [{ id: "view_1", name: "主画面", components: [] }],
+      devices: [],
+      datasets: []
+    };
+    deviceList.value = [];
+    datasetList.value = [];
   } finally {
     loading.value = false;
   }
 };
-
-/**
- * 初始化新项目
- */
 export const initializeNewProject = (
   projectInfo: any,
   projectData: any,
@@ -287,7 +345,7 @@ export const handleImageUpload = async (
     loading.value = true;
 
     // 上传到服务器
-    const response = await scadaApi.project.uploadResource(
+    const response = await scadaApi.uploadResource(
       file,
       Number(projectInfo.value.SnowId),
       "image"
@@ -385,7 +443,7 @@ export const handleVideoUpload = async (
   try {
     loading.value = true;
 
-    const response = await scadaApi.project.uploadResource(
+    const response = await scadaApi.uploadResource(
       file,
       Number(projectInfo.value.SnowId),
       "video"
@@ -459,7 +517,7 @@ export const handleSvgUpload = async (
   try {
     loading.value = true;
 
-    const response = await scadaApi.project.uploadResource(
+    const response = await scadaApi.uploadResource(
       file,
       Number(projectInfo.value.SnowId),
       "svg"
@@ -476,76 +534,6 @@ export const handleSvgUpload = async (
   } finally {
     loading.value = false;
   }
-};
-
-/**
- * 导出项目为.fuxa文件
- */
-export const handleExportProject = (projectInfo: any) => {
-  if (!projectInfo.value.SnowId) {
-    ElMessage.warning("请先保存项目");
-    return;
-  }
-
-  // 直接下载文件
-  const url = scadaApi.project.exportProject(projectInfo.value.SnowId);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${projectInfo.value.Name}_${Date.now()}.fuxa`;
-  link.click();
-
-  ElMessage.success("项目导出中...");
-};
-
-/**
- * 导入.fuxa项目文件
- */
-export const handleImportProject = (loading: Ref<boolean>, router: Router) => {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = ".fuxa,.zip";
-
-  input.onchange = async (e: Event) => {
-    const file = (e.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-
-    try {
-      loading.value = true;
-
-      // 确认导入
-      await ElMessageBox.confirm(
-        `确定要导入项目"${file.name}"吗？当前项目数据将被清空。`,
-        "导入项目",
-        { type: "warning" }
-      );
-
-      // 调用API导入
-      const response = await scadaApi.project.importProject(file);
-
-      if (response.success) {
-        ElMessage.success("导入成功，正在加载项目...");
-
-        // 跳转到新导入的项目
-        router.push({
-          name: "ScadaEditor",
-          params: { id: response.data.id }
-        });
-
-        // 重新加载页面
-        window.location.reload();
-      } else {
-        ElMessage.error(response.message || "导入失败");
-      }
-    } catch (error: any) {
-      if (error !== "cancel") {
-        ElMessage.error("导入失败: " + error.message);
-      }
-    } finally {
-      loading.value = false;
-    }
-  };
-
-  input.click();
 };
 
 /**
@@ -606,4 +594,26 @@ export const handleBeforeUnload = (isSaved: Ref<boolean>) => {
       return event.returnValue;
     }
   };
+};
+
+/**
+ * 发布/取消发布项目
+ * @param projectId 项目ID
+ * @param status 项目状态(0:草稿 1:发布)
+ */
+export const publishProject = async (projectId: number, status: number) => {
+  try {
+    const response = await scadaApi.dashPublish(projectId, status);
+    if (response.success) {
+      ElMessage.success(status === 1 ? "项目发布成功" : "取消发布成功");
+      return true;
+    } else {
+      ElMessage.error(response.message || "操作失败");
+      return false;
+    }
+  } catch (error) {
+    console.error("发布项目失败:", error);
+    ElMessage.error("操作失败: " + (error as Error).message);
+    return false;
+  }
 };

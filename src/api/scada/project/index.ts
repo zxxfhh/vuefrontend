@@ -17,13 +17,7 @@ export const getListByPage = (data?: QueryTableParams) => {
 /** 删除 */
 export const deleteByPk = (id?: string) => {
   localStorage.setItem("button", "删除" + button);
-  return http.request<Result>("post", "/ScadaProject/DeleteByPk?_Id=" + id);
-};
-
-/** 查询单个*/
-export const getInfoByPk = (id?: any) => {
-  localStorage.setItem("button", "查询单个" + button);
-  return http.request<Result>("get", "/ScadaProject/GetInfoByPk?_Id=" + id);
+  return http.request<Result>("post", "/ScadaProject/DeleteById?projectId=" + id);
 };
 
 /** 批量保存/修改 */
@@ -34,153 +28,64 @@ export const saveBatch = (data?: object) => {
   });
 };
 
-// ==================== 独立部署方案新API ====================
+
+// ==================== 后端ScadaProjectController对应的API ====================
 
 /**
- * 分页查询项目列表（新版）
- * @param data 查询参数
+ * 上传Base64图片（用于缩略图）
+ * 参考: AttachFileController.UploadBybBase64
  */
-export const getProjectList = (data?: {
-  keyword?: string;
-  status?: number;
-  pageIndex?: number;
-  pageSize?: number;
-  orderBy?: string;
-  orderDirection?: string;
+export const uploadBase64Image = (base64String: string, imageType: string) => {
+  localStorage.setItem("button", "上传Base64图片");
+  return http.request<Result>("post", "/AttachFile/UploadBybBase64", {
+    data: {
+      Base64String: base64String,
+      ImageType: imageType
+    }
+  });
+};
+
+/**
+ * 保存组态项目数据
+ * 参考: ScadaProjectController.SaveProjectData
+ */
+export const saveProjectData = (data: {
+  ProjectId: number;
+  ContentData?: string;
+  Thumbnail?: string;
 }) => {
-  localStorage.setItem("button", "查询项目列表");
-  return http.request<ResultTable>("post", "/scada/project/list", { data });
-};
-
-/**
- * 获取项目元数据
- * @param id 项目ID
- */
-export const getProjectMeta = (id: string | number) => {
-  localStorage.setItem("button", "获取项目元数据");
-  return http.request<Result>("get", `/scada/project/get-meta/${id}`);
-};
-
-/**
- * 保存项目到本地文件
- * @param data 项目数据
- */
-export const saveProjectToFile = (data: {
-  id?: number;
-  name: string;
-  description?: string;
-  projectData: string;
-  version?: string;
-  status?: number;
-  componentCount?: number;
-}) => {
-  localStorage.setItem("button", "保存项目到文件");
-  return http.request<Result>("post", "/scada/project/save-to-file", { data });
-};
-
-/**
- * 从本地文件加载项目
- * @param filePath 文件路径
- */
-export const loadProjectFromFile = (filePath: string) => {
-  localStorage.setItem("button", "加载项目文件");
-  return http.request<Result>("get", "/scada/project/load-from-file", {
-    params: { filePath }
+  localStorage.setItem("button", "保存组态数据");
+  return http.request<Result>("post", "/ScadaProject/SaveProjectData", {
+    data
   });
 };
 
 /**
- * 删除项目（软删除）
- * @param id 项目ID
+ * 发布/取消发布项目
+ * 参考: ScadaProjectController.DashPublish
  */
-export const deleteProject = (id: string | number) => {
-  localStorage.setItem("button", "删除项目");
-  return http.request<Result>("delete", `/scada/project/delete/${id}`);
+export const dashPublish = (projectId: number, status: number) => {
+  localStorage.setItem("button", status === 1 ? "发布项目" : "取消发布");
+  return http.request<Result>("get", `/ScadaProject/DashPublish?projectId=${projectId}&status=${status}`);
 };
 
 /**
- * 导出项目为.fuxa文件
- * @param id 项目ID
- * @returns 下载URL
+ * 根据项目ID获取组态数据信息
+ * 参考: ScadaProjectController.GetDataInfo
  */
-export const exportProject = (id: string | number) => {
-  return `/api/scada/project/export/${id}`;
+export const getDataInfo = (projectId: number) => {
+  localStorage.setItem("button", "获取组态数据");
+  return http.request<Result>("get", `/ScadaProject/GetDataInfo?projectId=${projectId}`);
 };
 
-/**
- * 导入.fuxa项目文件
- * @param file .fuxa文件
- */
-export const importProject = (file: File) => {
-  localStorage.setItem("button", "导入项目");
-  const formData = new FormData();
-  formData.append("file", file);
-  return http.request<Result>("post", "/scada/project/import", {
-    data: formData,
-    headers: { "Content-Type": "multipart/form-data" }
-  });
-};
-
-/**
- * 更新最后打开时间
- * @param id 项目ID
- */
-export const updateLastOpenTime = (id: string | number) => {
-  return http.request<Result>("post", `/scada/project/update-last-open-time/${id}`);
-};
-
-/**
- * 上传资源文件
- * @param file 文件对象
- * @param projectId 项目ID
- * @param resourceType 资源类型
- */
-export const uploadResource = (
-  file: File,
-  projectId: number,
-  resourceType: "image" | "video" | "svg"
-) => {
-  localStorage.setItem("button", "上传资源文件");
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("projectId", projectId.toString());
-  formData.append("resourceType", resourceType);
-  return http.request<Result>("post", "/scada/resources/upload", {
-    data: formData,
-    headers: { "Content-Type": "multipart/form-data" }
-  });
-};
-
-/**
- * 获取资源文件URL
- * @param projectId 项目ID
- * @param resourceType 资源类型
- * @param fileName 文件名
- */
-export const getResourceUrl = (
-  projectId: number,
-  resourceType: "image" | "video" | "svg",
-  fileName: string
-) => {
-  return `/api/scada/resources/get/${projectId}/${resourceType}/${fileName}`;
-};
 
 // 默认导出
 export default {
-  // 旧版API
   getListByPage,
   deleteByPk,
-  getInfoByPk,
   saveBatch,
-  // 新版API
-  getProjectList,
-  getProjectMeta,
-  saveProjectToFile,
-  loadProjectFromFile,
-  deleteProject,
-  exportProject,
-  importProject,
-  updateLastOpenTime,
-  uploadResource,
-  getResourceUrl
+  uploadBase64Image,
+  saveProjectData,
+  dashPublish,
+  getDataInfo
 };

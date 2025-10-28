@@ -12,8 +12,6 @@ import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { useRenderIcon } from "@/components/ReIcon/src/hooks";
 import { fuxaMqttService } from "./core/fuxaMqttService";
-import type { MqttDeviceData, FuxaProject } from "@/api/scada/fuxa/types";
-import { scadaApi } from "@/api/scada";
 import FuxaComponentPanel from "./components/FuxaComponentPanel.vue";
 import DatasetPanel from "./components/DatasetPanel.vue";
 import PropertyPanel from "./components/PropertyPanel.vue";
@@ -430,6 +428,26 @@ const saveProject = () => utilsProject.saveProject(
   isSaved,
   router
 );
+
+/**
+ * 发布/取消发布项目
+ */
+const handlePublishProject = async () => {
+  if (!projectInfo.value.SnowId) {
+    ElMessage.warning("请先保存项目");
+    return;
+  }
+  
+  const newStatus = projectInfo.value.Status === 1 ? 0 : 1;
+  const success = await utilsProject.publishProject(
+    Number(projectInfo.value.SnowId),
+    newStatus
+  );
+  
+  if (success) {
+    projectInfo.value.Status = newStatus;
+  }
+};
 
 /**
  * 从本地文件加载项目
@@ -2752,6 +2770,12 @@ onUnmounted(() => {
       {{ isSimulating ? "停止仿真" : "开始仿真" }}
      </el-button>
      <el-button type="primary" @click="saveProject"> 保存项目 </el-button>
+     <el-button
+      :type="projectInfo.Status === 1 ? 'warning' : 'success'"
+      @click="handlePublishProject"
+     >
+      {{ projectInfo.Status === 1 ? "取消发布" : "发布项目" }}
+     </el-button>
     </el-button-group>
 
     <el-divider direction="vertical" />
