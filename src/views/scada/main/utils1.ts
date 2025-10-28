@@ -104,10 +104,10 @@ export const handleAddComponent = (
 
   // 添加到当前视图
   if (projectData.value?.views?.[0]) {
-    if (!projectData.value.views[0].components) {
-      projectData.value.views[0].components = [];
+    if (!projectData.value.components) {
+      projectData.value.components = [];
     }
-    projectData.value.views[0].components.push(componentInstance);
+    projectData.value.components.push(componentInstance);
   }
 
   isSaved.value = false;
@@ -566,11 +566,11 @@ export const addComponentToCanvas = (
 
   // 添加到项目数据
   if (projectData.value?.views?.[0]) {
-    if (!projectData.value.views[0].components) {
-      projectData.value.views[0].components = [];
+    if (!projectData.value.components) {
+      projectData.value.components = [];
     }
-    projectData.value.views[0].components.push(componentInstance);
-    console.log('✅ 组件已添加到 projectData，新的组件总数:', projectData.value.views[0].components.length);
+    projectData.value.components.push(componentInstance);
+    console.log('✅ 组件已添加到 projectData，新的组件总数:', projectData.value.components.length);
   } else {
     console.error('❌ projectData.value.views[0] 不存在！');
   }

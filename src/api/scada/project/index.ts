@@ -4,6 +4,43 @@ import type { Result, ResultTable, QueryTableParams } from "../../type";
 /** SCADA项目 */
 const button = "SCADA项目";
 
+// ==================== 类型定义 ====================
+
+/**
+ * SCADA项目信息（对应后端ScadaProject实体）
+ */
+export interface ScadaProjectInfo {
+  SnowId: string;
+  ProjectName: string;
+  ProjectDesc?: string;
+  ProjectStatus: number; // 0:未发布 1:发布
+  Thumbnail?: string;
+  UnitId?: number;
+  ExpandJson?: string;
+  CreateId?: number;
+  CreateTime?: string;
+  CreateName?: string;
+  UpdateId?: number;
+  UpdateTime?: string;
+  UpdateName?: string;
+}
+
+/**
+ * 项目完整信息（对应后端ProjectInfo，包含ContentData）
+ */
+export interface ProjectInfoWithData extends ScadaProjectInfo {
+  ContentData?: string; // 项目JSON内容
+}
+
+/**
+ * 保存项目数据请求参数（对应后端ProjectInfoData）
+ */
+export interface ProjectInfoData {
+  ProjectId: number;
+  ContentData?: string;
+  Thumbnail?: string;
+}
+
 // ==================== 旧版API（保留兼容性） ====================
 
 /** 分页查询 */
@@ -49,11 +86,7 @@ export const uploadBase64Image = (base64String: string, imageType: string) => {
  * 保存组态项目数据
  * 参考: ScadaProjectController.SaveProjectData
  */
-export const saveProjectData = (data: {
-  ProjectId: number;
-  ContentData?: string;
-  Thumbnail?: string;
-}) => {
+export const saveProjectData = (data: ProjectInfoData) => {
   localStorage.setItem("button", "保存组态数据");
   return http.request<Result>("post", "/ScadaProject/SaveProjectData", {
     data
@@ -72,10 +105,11 @@ export const dashPublish = (projectId: number, status: number) => {
 /**
  * 根据项目ID获取组态数据信息
  * 参考: ScadaProjectController.GetDataInfo
+ * @returns ProjectInfoWithData
  */
 export const getDataInfo = (projectId: number) => {
   localStorage.setItem("button", "获取组态数据");
-  return http.request<Result>("get", `/ScadaProject/GetDataInfo?projectId=${projectId}`);
+  return http.request<Result<ProjectInfoWithData>>("get", `/ScadaProject/GetDataInfo?projectId=${projectId}`);
 };
 
 

@@ -39,6 +39,8 @@ import * as utils3 from "./main/utils3";
 import * as utils4 from "./main/utils4";
 import * as utilsButton from "./main/utils-button";
 import * as utilsProject from "./main/utils-project";
+import { DEFAULT_PROJECT_DATA, getProjectId } from "./main/utils-project";
+import scadaApi, { type ScadaProjectInfo } from "@/api/scada/project";
 import {
  Close,
  Delete,
@@ -61,18 +63,9 @@ defineOptions({
 const route = useRoute();
 const router = useRouter();
 
-const projectId = ref(route.params.id as string);
-const projectData = ref({
-  views: [
-    {
-      id: "view_1",
-      name: "主画面",
-      description: "",
-      components: []
-    }
-  ],
-  devices: [],
-  datasets: []
+const projectId = getProjectId(route);
+
+const projectData = ref({ ...DEFAULT_PROJECT_DATA });
 });
 const loading = ref(false);
 const editorContainer = ref<HTMLDivElement>();
@@ -94,12 +87,12 @@ const mqttDeviceCount = computed(() => fuxaMqttService.devices.size);
 const mqttMessageCount = computed(() => fuxaMqttService.messageCount.value);
 
 // 项目基本信息
-const projectInfo = ref({
+const projectInfo = ref<ScadaProjectInfo>({
  SnowId: "",
- Name: "",
- Description: "",
- Version: "1.0.0",
- Status: 0
+ ProjectName: "未命名项目",
+ ProjectDesc: "",
+ ProjectStatus: 0,
+ UnitId: 0
 });
 
 const showComponentPanel = ref(true);
@@ -410,23 +403,13 @@ const goBack = () => utils1.goBack(isSaved, ElMessageBox, saveProject, router);
 // ========== 项目保存/加载功能 ==========
 
 /**
- * 保存项目到本地文件
+ * 保存项目
  */
 const saveProject = () => utilsProject.saveProject(
   loading,
   projectInfo,
   projectData,
-  canvasWidth,
-  canvasHeight,
-  gridSize,
-  showGrid,
-  enableSnap,
-  canvasBackgroundColor,
-  canvasBackgroundImage,
-  deviceList,
-  datasetList,
-  isSaved,
-  router
+  isSaved
 );
 
 /**
@@ -438,56 +421,34 @@ const handlePublishProject = async () => {
     return;
   }
   
-  const newStatus = projectInfo.value.Status === 1 ? 0 : 1;
+  const newStatus = projectInfo.value.ProjectStatus === 1 ? 0 : 1;
   const success = await utilsProject.publishProject(
     Number(projectInfo.value.SnowId),
     newStatus
   );
   
   if (success) {
-    projectInfo.value.Status = newStatus;
+    projectInfo.value.ProjectStatus = newStatus;
   }
 };
 
 /**
- * 从本地文件加载项目
+ * 从数据库加载项目
  */
 const loadProject = (projectId: string) => utilsProject.loadProject(
   projectId,
   loading,
   projectInfo,
   projectData,
-  deviceList,
-  datasetList,
-  canvasWidth,
-  canvasHeight,
-  gridSize,
-  showGrid,
-  enableSnap,
-  canvasBackgroundColor,
-  canvasBackgroundImage,
   isSaved,
   redrawCanvas,
   nextTick
 );
 
 /**
- * 初始化新项目
+ * 初始化新项目（已弃用 - 应从项目列表创建）
  */
-const initializeNewProject = () => utilsProject.initializeNewProject(
-  projectInfo,
-  projectData,
-  deviceList,
-  datasetList,
-  canvasWidth,
-  canvasHeight,
-  gridSize,
-  showGrid,
-  enableSnap,
-  canvasBackgroundColor,
-  canvasBackgroundImage,
-  isSaved
-);
+const initializeNewProject = () => utilsProject.initializeNewProject();
 
 // ========== 资源文件上传管理 ==========
 
@@ -1171,7 +1132,7 @@ const getModeDisplayName = (mode: string) => {
 
 // 获取当前视图组件数量
 const getCurrentViewComponentCount = () => {
- return projectData.value?.views?.[0]?.components?.length || 0;
+ return projectData.value?.components?.length || 0;
 };
 
 // 键盘快捷键处理
@@ -1184,12 +1145,12 @@ const deleteSelectedComponent = () => {
  const componentId = selectedCanvasComponent.value.id;
 
  // 从项目数据中移除
- if (projectData.value?.views?.[0]?.components) {
-  const index = projectData.value.views[0].components.findIndex(
+ if (projectData.value?.components) {
+  const index = projectData.value.components.findIndex(
    comp => comp.id === componentId
   );
   if (index > -1) {
-   projectData.value.views[0].components.splice(index, 1);
+   projectData.value.components.splice(index, 1);
   }
  }
 
@@ -1984,8 +1945,8 @@ const snapToGrid = (value: number) => {
 
 // 根据ID查找组件
 const findComponentById = (componentId: string) => {
- if (!projectData.value?.views?.[0]?.components) return null;
- return projectData.value.views[0].components.find(
+ if (!projectData.value?.components) return null;
+ return projectData.value.components.find(
   comp => comp.id === componentId
  );
 };
@@ -2073,12 +2034,12 @@ const removeComponentFromProject = (componentId: string) => {
  }
 
  // 从项目数据中移除
- if (projectData.value?.views?.[0]?.components) {
-  const index = projectData.value.views[0].components.findIndex(
+ if (projectData.value?.components) {
+  const index = projectData.value.components.findIndex(
    comp => comp.id === componentId
   );
   if (index > -1) {
-   projectData.value.views[0].components.splice(index, 1);
+   projectData.value.components.splice(index, 1);
   }
  }
 
@@ -2533,8 +2494,8 @@ onMounted(async () => {
  // 设置调整大小完成后的数据同步回调
  fuxaResizeHandles.onResizeEnd((component, dimensions) => {
   // 同步更新项目数据中的组件尺寸和位置
-  if (projectData.value?.views?.[0]?.components) {
-   const projectComponent = projectData.value.views[0].components.find(
+  if (projectData.value?.components) {
+   const projectComponent = projectData.value.components.find(
     comp => comp.id === component.id
    );
    if (projectComponent) {
@@ -2596,11 +2557,11 @@ onMounted(async () => {
   componentManager.onComponentCreated = component => {
    // 注意：不要重复调用addComponentToCanvas，因为组件已经被管理器创建了
    // 只需要添加到项目数据中
-   if (projectData.value?.views?.[0]) {
-    if (!projectData.value.views[0].components) {
-     projectData.value.views[0].components = [];
+   if (projectData.value) {
+    if (!projectData.value.components) {
+     projectData.value.components = [];
     }
-    projectData.value.views[0].components.push(component);
+    projectData.value.components.push(component);
    }
    isSaved.value = false;
   };
@@ -2637,9 +2598,9 @@ onMounted(async () => {
    }
 
    // 添加到项目数据
-   if (projectData.value?.views?.[0]) {
-    if (!projectData.value.views[0].components) {
-     projectData.value.views[0].components = [];
+   if (projectData.value) {
+    if (!projectData.value.components) {
+     projectData.value.components = [];
     }
 
     // 转换为项目数据格式
@@ -2659,7 +2620,7 @@ onMounted(async () => {
      height: pathComponent.height
     };
 
-    projectData.value.views[0].components.push(projectComponent);
+    projectData.value.components.push(projectComponent);
    }
 
    isSaved.value = false;
@@ -2758,7 +2719,7 @@ onUnmounted(() => {
      返回
     </el-button>
     <el-divider direction="vertical" />
-    <span class="project-name">{{ projectInfo.Name }}</span>
+    <span class="project-name">{{ projectInfo.ProjectName }}</span>
    </div>
 
    <div class="toolbar-center">
@@ -2771,10 +2732,10 @@ onUnmounted(() => {
      </el-button>
      <el-button type="primary" @click="saveProject"> 保存项目 </el-button>
      <el-button
-      :type="projectInfo.Status === 1 ? 'warning' : 'success'"
+      :type="projectInfo.ProjectStatus === 1 ? 'warning' : 'success'"
       @click="handlePublishProject"
      >
-      {{ projectInfo.Status === 1 ? "取消发布" : "发布项目" }}
+      {{ projectInfo.ProjectStatus === 1 ? "取消发布" : "发布项目" }}
      </el-button>
     </el-button-group>
 
@@ -2805,7 +2766,7 @@ onUnmounted(() => {
    <div class="toolbar-right">
     <el-tag v-if="!isSaved" type="warning">未保存</el-tag>
     <el-tag v-if="isSimulating" type="success">仿真中</el-tag>
-    <span class="version">v{{ projectInfo.Version }}</span>
+    <span class="version">v1.0.0</span>
    </div>
   </div>
 
@@ -2917,7 +2878,7 @@ onUnmounted(() => {
    <div class="status-left">
     <span>项目ID: {{ projectId }}</span>
     <el-divider direction="vertical" />
-    <span>状态: {{ projectInfo.Status === 0 ? "草稿" : "发布" }}</span>
+    <span>状态: {{ projectInfo.ProjectStatus === 0 ? "草稿" : "发布" }}</span>
    </div>
    <div class="status-right">
     <span :class="`mqtt-status mqtt-${mqttStatus}`">
