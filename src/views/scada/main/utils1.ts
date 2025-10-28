@@ -1,6 +1,5 @@
 import { ElMessage, ElMessageBox } from "element-plus";
 import { fuxaMqttService } from "../core/fuxaMqttService";
-import type { MqttDeviceData, FuxaProject } from "@/api/scada/fuxa/types";
 import {
   addResizeHandles,
   removeResizeHandles,
