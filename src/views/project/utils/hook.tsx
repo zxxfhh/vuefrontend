@@ -49,16 +49,10 @@ export function useScadaProject(tableRef: Ref) {
     },
     {
       label: "项目描述",
-      prop: "Description",
+      prop: "ProjectDesc",
       align: "left",
       minWidth: 200,
       showOverflowTooltip: true
-    },
-    {
-      label: "项目版本",
-      prop: "Version",
-      align: "center",
-      width: 100
     },
     {
       label: "项目状态",
@@ -69,7 +63,6 @@ export function useScadaProject(tableRef: Ref) {
         const statusMap = {
           0: { text: "开发中", type: "info" },
           1: { text: "已发布", type: "success" },
-          2: { text: "已停用", type: "danger" }
         };
         const status = statusMap[row.ProjectStatus] || {
           text: "未知",
@@ -125,7 +118,7 @@ export function useScadaProject(tableRef: Ref) {
 
       // 使用动态路由导航到SCADA编辑器
       router.push({
-        name: "ScadaFuxaEditor",
+        name: "ScadaEditor",
         params: { id: row.SnowId.toString() }
       });
       //router.push({
@@ -215,9 +208,8 @@ export function useScadaProject(tableRef: Ref) {
       title,
       SnowId: "",
       ProjectName: "",
-      Description: "",
+      ProjectDesc: "",
       ProjectStatus: 1,
-      Version: "1.0.0",
       Thumbnail: "",
       UnitId: 0,
       ExpandJson: ""

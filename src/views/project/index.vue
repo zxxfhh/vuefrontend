@@ -72,7 +72,6 @@ const importProject = () => {
           >
             <el-option label="开发中" value="0" />
             <el-option label="已发布" value="1" />
-            <el-option label="已停用" value="2" />
           </el-select>
         </el-form-item>
         <el-form-item>

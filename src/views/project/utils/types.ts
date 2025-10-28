@@ -5,12 +5,10 @@ import type { QueryTableParams } from "@/api/type";
 export type { QueryTableParams };
 
 export interface ScadaProjectFormItemProps {
-  title?: string;
   SnowId?: string | number;
   ProjectName: string;
-  Description?: string;
+  ProjectDesc?: string;
   ProjectStatus: number;
-  Version?: string;
   Thumbnail?: string;
   UnitId?: number;
   ExpandJson?: string;
@@ -19,17 +17,17 @@ export interface ScadaProjectFormItemProps {
 export interface ScadaProjectItem {
   SnowId: string | number;
   ProjectName: string;
-  Description?: string;
+  ProjectDesc?: string;
   ProjectStatus: number;
-  Version?: string;
   Thumbnail?: string;
-  IsDeleted: number;
   UnitId: number;
   ExpandJson?: string;
+  CreateId?: string;
   CreateTime?: string;
+  CreateName?: string;
+  UpdateId?: string;
   UpdateTime?: string;
-  CreateBy?: string;
-  UpdateBy?: string;
+  UpdateName?: string;
 }
 
 export interface ScadaProjectFormProps {
