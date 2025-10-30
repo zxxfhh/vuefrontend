@@ -66,7 +66,6 @@ const router = useRouter();
 const projectId = getProjectId(route);
 
 const projectData = ref({ ...DEFAULT_PROJECT_DATA });
-});
 const loading = ref(false);
 const editorContainer = ref<HTMLDivElement>();
 
@@ -448,7 +447,9 @@ const loadProject = (projectId: string) => utilsProject.loadProject(
 /**
  * 初始化新项目（已弃用 - 应从项目列表创建）
  */
-const initializeNewProject = () => utilsProject.initializeNewProject();
+const initializeNewProject = () => {
+  utilsProject.initializeNewProject(projectInfo, projectData, isSaved);
+};
 
 // ========== 资源文件上传管理 ==========
 

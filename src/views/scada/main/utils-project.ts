@@ -175,20 +175,37 @@ export const loadProject = async (
     ElMessage.error("加载失败: " + (error as Error).message);
 
     // 失败时初始化默认数据
-    projectData.value = {
-      settings: {
-        canvasWidth: 1920,
-        canvasHeight: 1080,
-        gridSize: 20,
-        showGrid: true,
-        enableSnap: true,
-        backgroundColor: "#f5f5f5",
-        backgroundImage: ""
-      },
-      components: [],
-      devices: [],
-      datasets: []
     projectData.value = { ...DEFAULT_PROJECT_DATA };
+  } finally {
+    loading.value = false;
+  }
+};
+
+/**
+ * 初始化新项目
+ * 将所有配置重置为默认值
+ */
+export const initializeNewProject = (
+  projectInfo: Ref<ScadaProjectInfo>,
+  projectData: any,
+  isSaved: Ref<boolean>
+) => {
+  // 重置项目基本信息
+  projectInfo.value = {
+    SnowId: "",
+    ProjectName: "未命名项目",
+    ProjectDesc: "",
+    ProjectStatus: 0,
+    UnitId: 0
+  };
+
+  // 重置项目数据为默认值
+  projectData.value = { ...DEFAULT_PROJECT_DATA };
+
+  // 标记为未保存
+  isSaved.value = false;
+};
+
 /**
  * 处理图片上传并创建组件
  */
@@ -518,7 +535,10 @@ export const DEFAULT_PROJECT_DATA = {
 /**
  * 获取项目ID from route params
  * @param route Vue Router route object
+ * @returns Ref<string> 项目ID,如果路由参数不存在则返回空字符串
  */
 export const getProjectId = (route: any) => {
-  return ref(route.params.id as string);
+  // 确保 route 和 route.params 存在
+  const id = route?.params?.id || '';
+  return ref(id as string);
 };
